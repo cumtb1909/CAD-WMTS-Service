@@ -34,6 +34,7 @@ namespace AutoCADLinkWTMS
 
         Point3d _center_point = new Point3d();
         Point2d _screenSize = new Point2d();
+        string _layer_name = "BaseMap";
 
         public  DrawImage()
         {
@@ -118,28 +119,29 @@ namespace AutoCADLinkWTMS
             Document document = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.CurrentDocument;
             using (document.LockDocument(DocumentLockMode.ProtectedAutoWrite, null, null, false))
             {
-                //Editor editor = document.Editor;
+                Editor editor = document.Editor;
                 //Size win_size = document.Window.GetSize();
                 //Point location = document.Window.GetLocation();
                 //editor.WriteMessage("\nwin_size:" + win_size.ToString() + "location:" + location.ToString());
 
-                Point2d left_down = new Point2d(0, 0);
-                Point2d right_up = new Point2d(0, 0);
                 if (1 == _level || 0 == _level)
                 {
                     return;
                 }
-                //ViewTableRecord currentView = editor.GetCurrentView();
-                //Point2d center_point = currentView.CenterPoint;
-                //Size size = new Size((int)currentView.Width, (int)currentView.Height);
-                //editor.WriteMessage("\ncenter_point:" + center_point.ToString() + "size:" + size.ToString());
-                Point3d center_point3d = (Point3d)Autodesk.AutoCAD.ApplicationServices.Application.GetSystemVariable("VIEWCTR");
-                Point2d size_screen = (Point2d)Autodesk.AutoCAD.ApplicationServices.Application.GetSystemVariable("SCREENSIZE");
-                Size size = new Size((int)size_screen.X, (int)size_screen.Y);
-                Point2d center_point = new Point2d(center_point3d.X, center_point3d.Y);
-                MapTiles.webMercatorBounds(center_point, _level, size, ref left_down, ref right_up);
+                ViewTableRecord currentView = editor.GetCurrentView();
+                Point2d view_center_point = currentView.CenterPoint;
+                Size view_size = new Size((int)currentView.Width, (int)currentView.Height);
+                //editor.WriteMessage("\ncenter_point:" + view_center_point.ToString() + "view_size:" + view_size.ToString());
+                Point2d left_down = new Point2d(view_center_point.X - view_size.Width/2.0,view_center_point.Y-view_size.Height/2.0);
+                Point2d right_up = new Point2d(view_center_point.X + view_size.Width/2.0,view_center_point.Y+view_size.Height/2.0);
 
-                document.Editor.WriteMessage("\n CenterPoint:" + center_point.ToString() + "left_down:" + left_down.ToString() + "right_up:" + right_up.ToString() + "level:" + _level.ToString());
+                //Point3d center_point3d = (Point3d)Autodesk.AutoCAD.ApplicationServices.Application.GetSystemVariable("VIEWCTR");
+                //Point2d size_screen = (Point2d)Autodesk.AutoCAD.ApplicationServices.Application.GetSystemVariable("SCREENSIZE");
+                //Size size = new Size((int)size_screen.X, (int)size_screen.Y);
+                //Point2d center_point = new Point2d(center_point3d.X, center_point3d.Y);
+                //MapTiles.webMercatorBounds(center_point, _level, size, ref left_down, ref right_up);
+
+                //document.Editor.WriteMessage("\n CenterPoint:" + center_point.ToString() + "left_down:" + left_down.ToString() + "right_up:" + right_up.ToString() + "level:" + _level.ToString());
                 //RectangleF view_image = new RectangleF();
                 //bool is_contain = MapTiles.getIntersects(left_down, right_up, ref view_image);
                 //if (!is_contain)
@@ -155,7 +157,7 @@ namespace AutoCADLinkWTMS
                 //}
                 int start_row = 0, end_row = 0, start_col = 0, end_col = 0;
                 MapTiles.webMercatorTilesFromBound(left_down, right_up, _level, out start_row, out start_col, out end_row, out end_col);
-
+                
                 addImage(document, MapTiles.webMercatorResolution(_level), start_row, end_row, start_col, end_col);
             }
         }
@@ -179,18 +181,6 @@ namespace AutoCADLinkWTMS
             }
         }
 
-
-        public void drawImage()
-        {
-            //Point3d point3d = new Point3d(2000, 9000, 0);
-            //Vector3d v1 = new Vector3d(1, 0, 0); 
-            //Vector3d v2 = new Vector3d(0, 1, 0);
-            //Document document = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.CurrentDocument;
-            //string url = "http://t3.tianditu.cn/img_c/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=c&TileMatrix=1&TileRow=0&TileCol=0&style=default&format=tiles";
-            ////string url = @"E:\Code\AutoCADLinkWTMS\AutoCADLinkWTMS\bin\x64\Debug\wmts.jpg";
-            //ObjectId image_id = DefineRasterImage(document, url, point3d, v1, v2, "imageLayer", 0);
-            ////UpdateRasterImage(document, image_id, url, point3d, v1, v2);            
-        }
 
         /// <summary>
         /// 加载 首级别的影像
@@ -376,7 +366,6 @@ namespace AutoCADLinkWTMS
         }
 
 
-
         /// <summary>
         /// 获取当前视图范围
         /// </summary>
@@ -441,6 +430,7 @@ namespace AutoCADLinkWTMS
                 LayerTable layerTable = (LayerTable)t.TransactionManager.GetObject(db.LayerTableId, OpenMode.ForWrite, false);
                 if (layerTable.Has(layerName))
                 {
+                    LayerTableRecord acLyrTblRec = t.GetObject(layerTable[layerName], OpenMode.ForWrite) as LayerTableRecord;
                     result = layerTable[layerName];
                 }
                 else
@@ -452,6 +442,24 @@ namespace AutoCADLinkWTMS
                 }
             }
             return result;
+        }
+
+        void lockLayerOrNot(string layer_name,bool is_lock)
+        {
+            Document document = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+            using (document.LockDocument(DocumentLockMode.ProtectedAutoWrite, null, null, false))
+            {
+                using (Transaction tran = document.TransactionManager.StartTransaction())
+                {
+                    LayerTable layer_table = tran.GetObject(document.Database.LayerTableId, OpenMode.ForWrite) as LayerTable;
+                    if (layer_table.Has(layer_name))
+                    {
+                        LayerTableRecord ltr = tran.GetObject(layer_table[layer_name], OpenMode.ForWrite) as LayerTableRecord;
+                        ltr.IsLocked = is_lock;
+                    }
+                    tran.Commit();
+                }
+            }
         }
 
         public void ZoomExtents(Point3d minPoint, Point3d maxPoint)
@@ -595,6 +603,7 @@ namespace AutoCADLinkWTMS
 
         public ObjectId addImage(Document doc,double resulotion,int start_row,int end_row,int start_col,int end_col)
         {
+            lockLayerOrNot(_layer_name, false);
             Database database = doc.Database;
             Editor editor = doc.Editor;
             ObjectId result;
@@ -625,7 +634,7 @@ namespace AutoCADLinkWTMS
                         }                       
                         //rasterImageDef.ResolutionMMPerPixel = new Vector2d(78217.51696, 78217.51696);
                         DBDictionary dBDictionary = (DBDictionary)transaction.GetObject(objectId2, OpenMode.ForWrite);
-
+                        dBDictionary.Erase();
                         for (int i = start_row; i <= end_row; ++i)
                         {
                             for (int j = start_col; j <= end_col; ++j)
@@ -645,8 +654,9 @@ namespace AutoCADLinkWTMS
                                 }
                                 dBDictionary.SetAt(text, rasterImageDef);
                                 transaction.AddNewlyCreatedDBObject(rasterImageDef, true);
-                                string layer_name = "image_layer";
+                                string layer_name = _layer_name;
                                 ObjectId layer = GetLayer(database, transaction, ref layer_name);
+                                
                                 RasterImage rasterImage = new RasterImage();
                                 rasterImage.ImageDefId = (rasterImageDef.ObjectId);
                                 rasterImage.SetLayerId(layer, false);
@@ -666,7 +676,6 @@ namespace AutoCADLinkWTMS
                                 try
                                 {
                                     rasterImageDef.UpdateEntities();
-                                    //ZoomExtents(rasterImage.GeometricExtents.MinPoint, rasterImage.GeometricExtents.MaxPoint);
                                 }
                                 catch (System.Exception ex)
                                 {
@@ -697,6 +706,7 @@ namespace AutoCADLinkWTMS
                 //rrorReport.ShowErrorMessage(AfaStrings.UnexpectedErrorInAddingRasterImage);
                 result = ObjectId.Null;
             }
+            lockLayerOrNot(_layer_name,true);
             return result;
         }
 

@@ -15,30 +15,12 @@ namespace AutoCADLinkWTMS
         {
             _edit = Application.DocumentManager.MdiActiveDocument.Editor;
             _edit.WriteMessage("Initialize");
-            double r = 20037508.3427892;
-            int  start_row = 0,start_col = 0,end_row = 0,end_col = 0;
-            MapTiles.webMercatorTilesFromBound(new Point2d(-0.75 * r, 0.25 * r), new Point2d(-0.25*r,0.75*r),2, out start_row, out start_col, out end_row, out end_col);
-        }
+            new DrawImage();
+         }
         public void Terminate()
         {
             _edit.WriteMessage("Terminate");
         }
-        [CommandMethod("WMTSImage")]
-        public void WMTSImage()
-        {
-            new DrawImage().drawImage();
-        }
-        [CommandMethod("viewchange")]
-        public void viewchange()
-        {
-            new DrawImage().BindChange();
-        }
-        [CommandMethod("unviewchange")]
-        public void unviewchange()
-        {
-            new DrawImage().UnBindChange();
-        }
-
         [CommandMethod("cc")]
         public void cc()
         {

@@ -68,7 +68,7 @@ namespace AutoCADLinkWTMS
         /// <returns></returns>
         public static double webMercatorResolution(int level)
         {
-            return 20037508.3427892 / Math.Pow(2,level+7);
+            return 20037508.3427892 *2 /m_pipixel_size/ Math.Pow(2,level);
         }
 
         /// <summary>
@@ -107,29 +107,10 @@ namespace AutoCADLinkWTMS
             double origin_x = -m_earth_radius;
             double origin_y =  m_earth_radius;
             double resolution_l = webMercatorResolution(level);
-            start_col = (int)Math.Floor(Math.Abs((origin_x - left_down.X)) / resolution_l / m_pipixel_size);
-            start_col -= 1;
-            if (0 > start_col)
-            {
-                start_col = 0;
-            }
+            start_col = (int)Math.Floor(Math.Abs(origin_x - left_down.X) / resolution_l / m_pipixel_size);
             end_row = (int)Math.Floor(Math.Abs(origin_y - left_down.Y) / resolution_l / m_pipixel_size);
-            end_row += 1;
-            if (0 > end_row)
-            {
-                end_row = 0;
-            }
             end_col = (int)Math.Floor(Math.Abs(origin_x - right_up.X) / resolution_l / m_pipixel_size);
-            if (0 > end_col)
-            {
-                end_col = 0;
-            }
             start_row = (int)Math.Floor(Math.Abs(origin_y - right_up.Y) / resolution_l / m_pipixel_size);
-            start_row -= 1;
-            if (0 > start_row)
-            {
-                start_row = 0;
-            }
         }
 
         public static void webMercatorTilesFromBound1(Point2d left_down, Point2d right_up, int level, out int start_row, out int start_col, out int end_row, out int end_col)
